@@ -77,10 +77,10 @@
         }
     </style>
 </head>
-<body class="flex flex-col h-screen">
+<body class="flex flex-col h-screen bg-gray-50">
 
     <!-- Header Section -->
-    <header class="bg-white border-b border-border-gray shadow-sm">
+    <header class="bg-gradient-to-r from-sap-blue to-blue-500 text-white border-b border-border-gray shadow-md">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo and Navigation -->
@@ -343,12 +343,14 @@
     // In a real application, this data would be fetched from a backend or persistent storage.
     let clients = [
         { id: 'client1', name: 'Acme Pty Ltd', abn: '12345678901' },
-        { id: 'client2', name: 'Beta LLC', abn: '98765432109' }
+        { id: 'client2', name: 'Beta LLC', abn: '98765432109' },
+        { id: "client3", name: "Gamma Corp", abn: "11223344556" }
     ];
     let entities = [
         { id: 'entity1_1', clientId: 'client1', name: 'Acme Operations' },
         { id: 'entity1_2', clientId: 'client1', name: 'Acme Investments' },
-        { id: 'entity2_1', clientId: 'client2', name: 'Beta Distribution' }
+        { id: 'entity2_1', clientId: 'client2', name: 'Beta Distribution' },
+        { id: "entity3_1", clientId: "client3", name: "Gamma Holdings" }
     ];
     let chartOfAccounts = [ // Chart of Accounts data per entity
         // Entity 1_1 (Acme Operations) accounts
@@ -360,6 +362,8 @@
         // Entity 2_1 (Beta Distribution) accounts
         { id: 'coa6', entityId: 'entity2_1', code: '1010', name: 'Operating Cash', taxCode: 'N/A', reportCode: 'ASS', reportingGroup: 'Assets' },
         { id: 'coa7', entityId: 'entity2_1', code: '5050', name: 'Cost of Goods Sold', taxCode: 'GST', reportCode: 'CGS', reportingGroup: 'Cost of Sales' },
+        { id: "coa8", entityId: "entity3_1", code: "1500", name: "Accounts Receivable", taxCode: "N/A", reportCode: "ASS", reportingGroup: "Assets" },
+        { id: "coa9", entityId: "entity3_1", code: "6100", name: "Marketing Expense", taxCode: "GST", reportCode: "EXP", reportingGroup: "Expenses" }
     ];
     let journalEntries = []; // Stores posted journal entries: { id, entityId, status, description, templateId, lines: [], documents: [], feedbackLogs: [] }
     // Note: journalEntryLines, documents, and feedbackLogs are conceptually part of journalEntries.lines and journalEntries.documents/feedbackLogs,
@@ -373,6 +377,10 @@
         ]},
         { id: 'tpl2', entityId: 'entity1_1', name: 'Quarterly Depreciation', frequency: 'Quarterly', lines: [
             // Example lines for this template would go here
+        ]},
+        { id: "tpl3", entityId: "entity3_1", name: "Annual Marketing Accrual", frequency: "Annual", lines: [
+            { accountId: "coa9", debit: 5000, credit: 0, taxCode: "GST", description: "Marketing campaign accrual" },
+            { accountId: "coa8", debit: 0, credit: 5000, taxCode: "N/A", description: "Accrued marketing payable" }
         ]}
     ];
 
