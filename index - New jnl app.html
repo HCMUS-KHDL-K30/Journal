@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Journal Entry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind CSS configuration for custom colors and fonts
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sap-blue': '#0070f2',
+                        'sidebar-bg': '#f7f9fc',
+                        'border-gray': '#e5e7eb',
+                        'light-gray': '#f3f4f6',
+                        'medium-gray': '#9ca3af',
+                        'dark-gray': '#4b5563',
+                        'text-main': '#1f2937',
+                        'text-secondary': '#6b7280',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base body styling with Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fff;
+        }
+        /* Tailwind-like classes for common UI elements */
+        .top-nav-item {
+            @apply px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900;
+        }
+        .top-nav-item.active {
+            @apply bg-gray-200 text-gray-900;
+        }
+        .sidebar-item {
+            @apply block w-full text-left px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-100;
+        }
+        .btn-primary {
+            @apply bg-sap-blue text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition duration-150 ease-in-out;
+        }
+        .btn-secondary {
+            @apply bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-300 transition duration-150 ease-in-out;
+        }
+        .input-field {
+            @apply block w-full px-3 py-2 border border-border-gray rounded-md shadow-sm focus:outline-none focus:ring-sap-blue focus:border-sap-blue sm:text-sm;
+        }
+        .card {
+            @apply bg-white shadow-lg rounded-xl p-6;
+        }
+        /* Custom scrollbar for better UX in scrollable areas */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #aaa;
+        }
+        /* Dashed border for file drop zone */
+        #fileDropZone {
+            border-style: dashed;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Header Section -->
+    <header class="bg-white border-b border-border-gray shadow-sm">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo and Navigation -->
+                <div class="flex items-center space-x-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/SAP_2011_logo.svg/1200px-SAP_2011_logo.svg.png" alt="SAP Logo" class="h-8 w-auto">
+                    <nav class="hidden md:flex space-x-2">
+                        <a href="#" class="top-nav-item">Dashboard</a>
+                        <a href="#" class="top-nav-item active">Journal Entries</a>
+                        <!-- Changed from Tax Mapping to Chart of Accounts -->
+                        <a href="#" class="top-nav-item" id="chartOfAccountsBtnNav">Chart of Accounts</a>
+                        <a href="#" class="top-nav-item" id="showTrialBtnNav">Trial Balance</a>
+                        <a href="#" class="top-nav-item" id="templateBtnNav">Templates</a>
+                    </nav>
+                </div>
+                <!-- User Actions and Dark Mode Toggle -->
+                <div class="flex items-center space-x-3">
+                     <div class="text-xs text-text-secondary hidden sm:block" id="fiscalYearSummary">
+                        <!-- Placeholder for fiscal year summary -->
+                        Loading summary...
+                    </div>
+                    <button aria-label="Notifications" class="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sap-blue">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </button>
+                    <img class="h-8 w-8 rounded-full" src="https://placehold.co/32x32/0070f2/FFFFFF?text=MA" alt="User Avatar">
+                     <button id="darkModeToggle" aria-label="Toggle Dark Mode" class="p-1 rounded-full text-gray-400 hover:text-gray-500">🌙</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area - Flex container for sidebar and main content -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="w-1/4 bg-sidebar-bg p-6 border-r border-border-gray overflow-y-auto custom-scrollbar">
+            <h1 class="text-xl font-semibold text-text-main mb-6">Year-End Adjustment Journal</h1>
+
+            <!-- Entity Selection -->
+            <div class="mb-6">
+                <label for="entitySelect" class="block text-sm font-medium text-text-secondary mb-1">Entities</label>
+                <select id="entitySelect" class="input-field">
+                    <!-- Entities will be populated dynamically by JavaScript -->
+                </select>
+            </div>
+
+            <!-- Upload File Button -->
+            <button id="uploadFileBtn" class="btn-primary w-full mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                Upload File
+            </button>
+
+            <!-- General Audit Trail -->
+            <div class="mt-8">
+                <h2 class="text-lg font-semibold text-text-main mb-3">General Audit Trail</h2>
+                <div id="generalAuditTrail" class="space-y-3 text-xs text-text-secondary max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                    <!-- General audit trail items will be populated here by JavaScript -->
+                    <p>No general audit activity yet.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Journal Entry Section (Main Content) -->
+        <main class="flex-1 p-6 md:p-8 overflow-y-auto custom-scrollbar">
+            <div class="max-w-4xl mx-auto">
+                <div class="card">
+                    <h2 class="text-2xl font-semibold text-text-main mb-6">Create Journal Entry</h2>
+
+                    <!-- Journal Description Input -->
+                    <div class="mb-6">
+                        <label for="journalDescription" class="block text-sm font-medium text-text-secondary mb-1">Enter description or select a template</label>
+                        <input type="text" id="journalDescription" class="input-field" placeholder="e.g., Accrue for March 2025 salaries">
+                    </div>
+
+                    <!-- Template Selection -->
+                    <div class="mb-6">
+                        <select id="templateSelect" class="input-field">
+                            <option value="">Select a template (optional)</option>
+                            <!-- Templates will be populated dynamically by JavaScript -->
+                        </select>
+                    </div>
+
+                    <!-- File Drop Zone -->
+                    <div id="fileDropZone" class="mb-6 border-2 border-border-gray border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-sap-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="mt-2 text-sm text-text-secondary">Attach document or drop files here</p>
+                        <input type="file" id="fileUploadInput" class="hidden" multiple>
+                        <div id="filePreviewContainer" class="mt-2 text-sm"></div>
+                    </div>
+                    <div id="aiConfidenceScore" class="mb-4 text-sm text-text-secondary"></div>
+
+                    <!-- Entry Suggestions Table -->
+                    <h3 class="text-lg font-semibold text-text-main mb-3">Entry Suggestions</h3>
+                     <div class="overflow-x-auto mb-6 max-h-72 custom-scrollbar">
+                        <table class="min-w-full divide-y divide-border-gray">
+                            <thead class="bg-light-gray">
+                                <tr>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Account</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tax Code</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Debit</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Credit</th>
+                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entrySuggestionsTbody" class="bg-white divide-y divide-border-gray">
+                                <!-- AI suggestions will be populated here by JavaScript -->
+                                <tr><td colspan="6" class="px-4 py-3 text-sm text-text-secondary text-center">Enter a description to see AI suggestions.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                     <div id="suggestionBalanceCheckMessage" class="mb-4 text-sm text-center p-2 rounded-md"></div>
+                     <!-- New Export to Xero CSV Button -->
+                     <button id="exportCsvBtn" class="btn-secondary w-full mb-6">Export to Xero CSV</button>
+
+
+                    <!-- Entry Specific Audit Trail -->
+                    <h3 class="text-lg font-semibold text-text-main mb-3 mt-6">Audit Trail (This Entry)</h3>
+                    <div id="entrySpecificAuditTrail" class="space-y-2 text-xs text-text-secondary max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                         <!-- Entry specific audit trail items will be populated here by JavaScript -->
+                        <p>No actions taken on this entry yet.</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mt-8 flex justify-end space-x-3">
+                        <button id="cancelEntryBtn" class="btn-secondary">Cancel</button>
+                        <button id="postEntryBtn" class="btn-primary">Post</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Trial Balance Modal -->
+    <div class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden" id="trialModal" role="dialog" aria-modal="true" aria-labelledby="trialModalHeading">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3">
+                <h2 class="text-xl font-semibold" id="trialModalHeading">Trial Balance & Tax Summaries</h2>
+                <button class="modal-close cursor-pointer z-50" id="trialClose" aria-label="Close Trial Balance Modal">
+                    <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                </button>
+            </div>
+            <div id="trialBalanceContent">
+                <!-- Content for trial balance display -->
+                 <div class="mb-4">
+                    <label for="trialBalanceStartDate" class="block text-sm font-medium text-gray-700">Start Date:</label>
+                    <input type="text" id="trialBalanceStartDate" class="input-field mt-1" placeholder="dd/mm/yyyy">
+                </div>
+                <div class="mb-4">
+                    <label for="trialBalanceEndDate" class="block text-sm font-medium text-gray-700">End Date:</label>
+                    <input type="text" id="trialBalanceEndDate" class="input-field mt-1" placeholder="dd/mm/yyyy">
+                </div>
+                 <div class="mb-4">
+                    <label for="entityTypeFilterSelectModal" class="block text-sm font-medium text-gray-700">Entity Type:</label>
+                    <select id="entityTypeFilterSelectModal" class="input-field mt-1"></select>
+                </div>
+                <div id="trialBalanceSummary" class="mt-4">
+                    <!-- TB summary will be rendered here by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Journal Entry Templates Modal -->
+    <div class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden" id="templateModal" role="dialog" aria-modal="true" aria-labelledby="templateModalHeading">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+             <div class="flex justify-between items-center pb-3">
+                <h2 class="text-xl font-semibold" id="templateModalHeading">Journal Entry Templates</h2>
+                <button class="modal-close cursor-pointer z-50" id="templateClose" aria-label="Close Templates Modal">
+                     <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                </button>
+            </div>
+            <div id="templateContent">
+                <!-- Button to add a new template -->
+                <button id="newTemplateBtn" class="btn-primary w-full mt-4">Add New Template</button>
+                <div id="templatesList" class="mt-4 space-y-2">
+                    <!-- Templates will be listed here, with edit/delete options -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart of Accounts Modal (Replaces Tax Mapping Modal) -->
+    <div class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden" id="chartOfAccountsModal" role="dialog" aria-modal="true" aria-labelledby="chartOfAccountsModalHeading">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+             <div class="flex justify-between items-center pb-3">
+                <h2 class="text-xl font-semibold" id="chartOfAccountsModalHeading">Chart of Accounts</h2>
+                <button class="modal-close cursor-pointer z-50" id="chartOfAccountsClose" aria-label="Close Chart of Accounts Modal">
+                    <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                </button>
+            </div>
+            <div id="chartOfAccountsContent">
+                <button id="addNewAccountBtn" class="btn-primary mb-4">Add New Account</button>
+                <div id="coaList" class="overflow-y-auto max-h-96 custom-scrollbar">
+                    <!-- Chart of Accounts accounts will be listed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Template Creation/Edit Modal (Simplified) -->
+    <div class="modal fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden" id="newTemplateModal" role="dialog" aria-modal="true" aria-labelledby="newTemplateModalHeading">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3">
+                <h2 class="text-xl font-semibold" id="newTemplateModalHeading">Add New Template</h2>
+                <button class="modal-close cursor-pointer z-50" id="newTemplateClose" aria-label="Close New Template Modal">
+                    <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg>
+                </button>
+            </div>
+            <div id="newTemplateContent">
+                <div class="mb-4">
+                    <label for="newTemplateName" class="block text-sm font-medium text-gray-700">Template Name:</label>
+                    <input type="text" id="newTemplateName" class="input-field mt-1" placeholder="e.g., Monthly Electricity Bill">
+                </div>
+                <div class="mb-4">
+                    <label for="newTemplateFrequency" class="block text-sm font-medium text-gray-700">Frequency:</label>
+                    <input type="text" id="newTemplateFrequency" class="input-field mt-1" placeholder="e.g., Monthly, Quarterly">
+                </div>
+                <h3 class="text-lg font-semibold text-text-main mb-3 mt-4">Template Lines</h3>
+                <div id="newTemplateLinesContainer" class="space-y-2">
+                    <!-- Template lines will be added dynamically here -->
+                    <div class="flex space-x-2 items-end">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Account</label>
+                            <select class="input-field new-template-account"></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Debit</label>
+                            <input type="number" step="0.01" class="input-field w-24 new-template-debit">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-secondary mb-1">Credit</label>
+                            <input type="number" step="0.01" class="input-field w-24 new-template-credit">
+                        </div>
+                        <button class="btn-secondary remove-template-line-btn">Remove</button>
+                    </div>
+                </div>
+                <button id="addTemplateLineBtn" class="btn-secondary mt-4">Add Line</button>
+                <button id="saveNewTemplateBtn" class="btn-primary w-full mt-6">Save Template</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-800 text-white py-2 px-4 rounded-lg shadow-md transition-opacity duration-300 opacity-0 z-50">
+        This is a toast message.
+    </div>
+
+
+<script>
+    // --- Global State & Constants (Adapted from PRD and existing app) ---
+    // Mock data for clients, entities, chart of accounts, and templates.
+    // In a real application, this data would be fetched from a backend or persistent storage.
+    let clients = [
+        { id: 'client1', name: 'Acme Pty Ltd', abn: '12345678901' },
+        { id: 'client2', name: 'Beta LLC', abn: '98765432109' }
+    ];
+    let entities = [
+        { id: 'entity1_1', clientId: 'client1', name: 'Acme Operations' },
+        { id: 'entity1_2', clientId: 'client1', name: 'Acme Investments' },
+        { id: 'entity2_1', clientId: 'client2', name: 'Beta Distribution' }
+    ];
+    let chartOfAccounts = [ // Chart of Accounts data per entity
+        // Entity 1_1 (Acme Operations) accounts
+        { id: 'coa1', entityId: 'entity1_1', code: '1000', name: 'Cash at Bank', taxCode: 'N/A', reportCode: 'ASS', reportingGroup: 'Assets' },
+        { id: 'coa2', entityId: 'entity1_1', code: '2000', name: 'Accounts Payable', taxCode: 'N/A', reportCode: 'LIA', reportingGroup: 'Liabilities' },
+        { id: 'coa3', entityId: 'entity1_1', code: '4000', name: 'Sales Revenue', taxCode: 'GST', reportCode: 'REV', reportingGroup: 'Revenue' },
+        { id: 'coa4', entityId: 'entity1_1', code: '6100', name: 'Rent Expense', taxCode: 'GST', reportCode: 'EXP', reportingGroup: 'Expenses' },
+        { id: 'coa5', entityId: 'entity1_1', code: '6000', name: 'Wages Expense', taxCode: 'FRE', reportCode: 'EXP', reportingGroup: 'Expenses' },
+        // Entity 2_1 (Beta Distribution) accounts
+        { id: 'coa6', entityId: 'entity2_1', code: '1010', name: 'Operating Cash', taxCode: 'N/A', reportCode: 'ASS', reportingGroup: 'Assets' },
+        { id: 'coa7', entityId: 'entity2_1', code: '5050', name: 'Cost of Goods Sold', taxCode: 'GST', reportCode: 'CGS', reportingGroup: 'Cost of Sales' },
+    ];
+    let journalEntries = []; // Stores posted journal entries: { id, entityId, status, description, templateId, lines: [], documents: [], feedbackLogs: [] }
+    // Note: journalEntryLines, documents, and feedbackLogs are conceptually part of journalEntries.lines and journalEntries.documents/feedbackLogs,
+    // so explicit global arrays for them are not strictly needed if always accessed via journalEntries.
+    let documents = []; // { id, entryId, filename, fileUrl }
+    let feedbackLogs = []; // { id, entryId, userId, originalSuggestion, finalEntry, accepted }
+    let templates = [ // Predefined journal entry templates
+        { id: 'tpl1', entityId: 'entity1_1', name: 'Monthly Rent Accrual', frequency: 'Monthly', lines: [
+            { accountId: 'coa4', debit: 1200, credit: 0, taxCode: 'GST', description: "Monthly office rent" },
+            { accountId: 'coa2', debit: 0, credit: 1200, taxCode: 'N/A', description: "Monthly office rent payable" }
+        ]},
+        { id: 'tpl2', entityId: 'entity1_1', name: 'Quarterly Depreciation', frequency: 'Quarterly', lines: [
+            // Example lines for this template would go here
+        ]}
+    ];
+
+    let currentJournal = null; // Object holding the journal entry currently being created/edited
+    let currentClientId = 'client1'; // Default client ID
+    let currentEntityId = 'entity1_1'; // Default entity ID, will be updated by user selection
+
+    const taxCodeOptions = ["N/A", "GST", "FRE"]; // Available tax codes
+    const reportingGroupOptions = ["Assets", "Liabilities", "Equity", "Revenue", "Expenses", "Cost of Sales"]; // Standard reporting groups for CoA
+
+    // Global audit log for major application activities
+    let generalAuditLog = [
+        { date: new Date(Date.now() - 2 * 60 * 60 * 1000), user: 'System', action: 'APP_STARTED', details: 'Application initialized.'}
+    ];
+
+
+    // --- DOM Elements ---
+    // Main form elements
+    const entitySelect = document.getElementById('entitySelect');
+    const journalDescriptionInput = document.getElementById('journalDescription');
+    const templateSelect = document.getElementById('templateSelect');
+    const fileDropZone = document.getElementById('fileDropZone');
+    const fileUploadInput = document.getElementById('fileUploadInput');
+    const filePreviewContainer = document.getElementById('filePreviewContainer');
+    const aiConfidenceScoreDiv = document.getElementById('aiConfidenceScore');
+    const entrySuggestionsTbody = document.getElementById('entrySuggestionsTbody');
+    const suggestionBalanceCheckMessage = document.getElementById('suggestionBalanceCheckMessage');
+    const entrySpecificAuditTrailDiv = document.getElementById('entrySpecificAuditTrail');
+    const generalAuditTrailDiv = document.getElementById('generalAuditTrail');
+    const cancelEntryBtn = document.getElementById('cancelEntryBtn');
+    const postEntryBtn = document.getElementById('postEntryBtn');
+    const toastElement = document.getElementById('toast');
+    const fiscalYearSummaryDiv = document.getElementById('fiscalYearSummary');
+    const darkModeToggleBtn = document.getElementById('darkModeToggle');
+    const exportCsvBtn = document.getElementById('exportCsvBtn'); // New button for CSV export
+
+
+    // Navigation buttons to open modals
+    const chartOfAccountsBtnNav = document.getElementById('chartOfAccountsBtnNav'); // Changed from taxMappingManagerBtnNav
+    const showTrialBtnNav = document.getElementById('showTrialBtnNav');
+    const templateBtnNav = document.getElementById('templateBtnNav');
+    const newTemplateBtn = document.getElementById('newTemplateBtn'); // Button inside Template Modal
+
+
+    // Modal elements
+    const trialModal = document.getElementById('trialModal');
+    const templateModal = document.getElementById('templateModal');
+    const chartOfAccountsModal = document.getElementById('chartOfAccountsModal'); // Changed from taxMappingModal
+    const newTemplateModal = document.getElementById('newTemplateModal'); // Modal for adding/editing templates
+
+    // Close buttons for modals
+    const trialCloseBtn = document.getElementById('trialClose');
+    const templateCloseBtn = document.getElementById('templateClose');
+    const chartOfAccountsCloseBtn = document.getElementById('chartOfAccountsClose'); // Changed from taxMappingCloseBtn
+    const newTemplateCloseBtn = document.getElementById('newTemplateClose'); // Close button for new template modal
+
+    const entityTypeFilterSelectModal = document.getElementById('entityTypeFilterSelectModal'); // For trial balance modal
+
+    // Elements specific to the New Template Modal
+    const newTemplateNameInput = document.getElementById('newTemplateName');
+    const newTemplateFrequencyInput = document.getElementById('newTemplateFrequency');
+    const newTemplateLinesContainer = document.getElementById('newTemplateLinesContainer');
+    const addTemplateLineBtn = document.getElementById('addTemplateLineBtn');
+    const saveNewTemplateBtn = document.getElementById('saveNewTemplateBtn'); // Reused for Save/Update
+
+    // Elements specific to the Chart of Accounts Modal
+    const addNewAccountBtn = document.getElementById('addNewAccountBtn');
+    const coaListDiv = document.getElementById('coaList');
+
+
+    // --- Initialization ---
+    // Event listener for when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        loadInitialData(); // Load any initial application data (mocked for this example)
+        populateEntitySelect(); // Populate the entity dropdown
+        populateTemplateSelect(); // Populate the template dropdown
+        renderGeneralAuditTrail(); // Display the general audit log
+        updateFiscalYearSummary(); // Update the fiscal year summary display
+        addEventListeners(); // Attach all event listeners
+        applyDarkModeSetting(); // Apply the user's dark mode preference
+        resetCreateJournalForm(); // Initialize/reset the journal entry form
+    });
+
+    /**
+     * Loads initial data for the application.
+     * In a real app, this would involve API calls or local storage retrieval.
+     */
+    function loadInitialData() {
+        // For this example, data is hardcoded globally.
+        showToast('Application initialized.', 'info');
+    }
+
+    /**
+     * Populates the entity selection dropdown based on the current client's entities.
+     */
+    function populateEntitySelect() {
+        entitySelect.innerHTML = ''; // Clear existing options
+        const clientEntities = entities.filter(e => e.clientId === currentClientId);
+        clientEntities.forEach(entity => {
+            const option = document.createElement('option');
+            option.value = entity.id;
+            option.textContent = entity.name;
+            if (entity.id === currentEntityId) {
+                option.selected = true; // Set default selected entity
+            }
+            entitySelect.appendChild(option);
+        });
+    }
+
+    /**
+     * Populates the template selection dropdown for the current entity.
+     */
+    function populateTemplateSelect() {
+        templateSelect.innerHTML = '<option value="">Select a template (optional)</option>'; // Default option
+        const entityTemplates = templates.filter(t => t.entityId === currentEntityId);
+        entityTemplates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            templateSelect.appendChild(option);
+        });
+    }
+
+    /**
+     * Attaches all necessary event listeners to DOM elements.
+     */
+    function addEventListeners() {
+        entitySelect.addEventListener('change', handleEntityChange); // Listen for entity changes
+        journalDescriptionInput.addEventListener('blur', handleDescriptionBlur); // Trigger AI suggestions on description blur
+        templateSelect.addEventListener('change', handleTemplateSelection); // Handle template selection
+
+        // File upload/drop zone event listeners
+        fileDropZone.addEventListener('click', () => fileUploadInput.click());
+        fileDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropZone.classList.add('border-sap-blue', 'bg-blue-50'); // Visual feedback for drag
+        });
+        fileDropZone.addEventListener('dragleave', () => {
+            fileDropZone.classList.remove('border-sap-blue', 'bg-blue-50'); // Remove feedback
+        });
+        fileDropZone.addEventListener('drop', handleFileDrop); // Handle file drop
+        fileUploadInput.addEventListener('change', handleFileUpload); // Handle file selection via input
+
+        // Journal entry action buttons
+        cancelEntryBtn.addEventListener('click', resetCreateJournalForm);
+        postEntryBtn.addEventListener('click', handlePostEntry);
+        darkModeToggleBtn.addEventListener('click', toggleDarkMode); // Dark mode toggle
+        exportCsvBtn.addEventListener('click', exportToXeroCSV); // Export CSV button
+
+        // Modal trigger buttons and their close buttons
+        // Chart of Accounts Modal
+        if (chartOfAccountsBtnNav && chartOfAccountsModal && chartOfAccountsCloseBtn) {
+             chartOfAccountsBtnNav.addEventListener('click', () => {
+                chartOfAccountsModal.classList.remove('hidden'); // Show modal
+                renderChartOfAccounts(); // Populate CoA list
+             });
+             chartOfAccountsCloseBtn.addEventListener('click', () => chartOfAccountsModal.classList.add('hidden')); // Hide modal
+        }
+        // Trial Balance Modal
+        if (showTrialBtnNav && trialModal && trialCloseBtn) {
+            showTrialBtnNav.addEventListener('click', () => {
+                populateEntityTypeFilterModal(); // Populate entity filter in trial balance modal
+                trialModal.classList.remove('hidden'); // Show modal
+                // In a full app, you'd call a function here to fetch and render trial balance data
+            });
+            trialCloseBtn.addEventListener('click', () => trialModal.classList.add('hidden')); // Hide modal
+        }
+        // Templates Modal
+        if (templateBtnNav && templateModal && templateCloseBtn) {
+            templateBtnNav.addEventListener('click', () => {
+                templateModal.classList.remove('hidden'); // Show modal
+                renderTemplatesList(); // Populate template list in modal
+            });
+            templateCloseBtn.addEventListener('click', () => templateModal.classList.add('hidden')); // Hide modal
+        }
+
+        // New Template Button functionality within the Templates Modal
+        if (newTemplateBtn && newTemplateModal && newTemplateCloseBtn && addTemplateLineBtn && saveNewTemplateBtn) {
+            newTemplateBtn.addEventListener('click', openNewTemplateModal); // Open new template form
+            newTemplateCloseBtn.addEventListener('click', () => newTemplateModal.classList.add('hidden')); // Close new template form
+            addTemplateLineBtn.addEventListener('click', addTemplateLineField); // Add new line to template form
+            saveNewTemplateBtn.addEventListener('click', saveNewTemplate); // Save new template
+
+            // Event delegation for dynamically added 'remove line' buttons in new template form
+            newTemplateLinesContainer.addEventListener('click', function(event) {
+                if (event.target.classList.contains('remove-template-line-btn')) {
+                    event.target.closest('.flex').remove(); // Remove the parent flex container (the line)
+                }
+            });
+        }
+
+        // Add New Account button in Chart of Accounts Modal
+        if (addNewAccountBtn) {
+            addNewAccountBtn.addEventListener('click', () => openNewAccountForm()); // Open form to add new account
+        }
+
+        // Global Escape key listener to close any open modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") {
+                [trialModal, templateModal, chartOfAccountsModal, newTemplateModal].forEach(modal => {
+                    if(modal && !modal.classList.contains('hidden')) { // Check if modal exists and is visible
+                        modal.classList.add('hidden'); // Hide the modal
+                    }
+                });
+            }
+        });
+
+        // Event delegation for dynamically added action buttons (edit/delete) in entry suggestions table
+        entrySuggestionsTbody.addEventListener('click', function(event) {
+            if (event.target.closest('.edit-suggestion-btn')) { // Use closest for better click targetting
+                const lineId = event.target.closest('.edit-suggestion-btn').dataset.lineId;
+                console.log('Edit suggestion line:', lineId);
+                showToast(`Edit line ${lineId} (functionality to make row editable not fully implemented).`, 'info');
+            } else if (event.target.closest('.delete-suggestion-btn')) {
+                const lineId = event.target.closest('.delete-suggestion-btn').dataset.lineId;
+                handleDeleteSuggestionLine(lineId);
+            }
+        });
+    }
+
+    /**
+     * Handles the change of selected entity in the sidebar.
+     */
+    function handleEntityChange() {
+        currentEntityId = entitySelect.value; // Update current entity ID
+        populateTemplateSelect(); // Re-populate templates for the new entity
+        resetCreateJournalForm(); // Reset the journal form
+        showToast(`Entity changed to: ${entities.find(e=>e.id === currentEntityId)?.name}`, 'info');
+        addGeneralAuditLog('ENTITY_CHANGE', `Switched to entity: ${currentEntityId}`);
+    }
+
+    /**
+     * Triggers AI suggestion generation when the journal description input loses focus.
+     */
+    function handleDescriptionBlur() {
+        const description = journalDescriptionInput.value.trim();
+        if (description) {
+            aiConfidenceScoreDiv.textContent = 'AI analyzing...';
+            entrySuggestionsTbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-sm text-text-secondary text-center">Generating AI suggestions...</td></tr>`;
+            // Simulate AI processing delay
+            setTimeout(() => {
+                generateAISuggestions(description);
+                addGeneralAuditLog('AI_SUGGESTION_TRIGGERED', `For description: "${description}"`);
+            }, 1500);
+        } else {
+             aiConfidenceScoreDiv.textContent = '';
+            entrySuggestionsTbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-sm text-text-secondary text-center">Enter a description to see AI suggestions.</td></tr>`;
+        }
+    }
+
+    /**
+     * Generates mock AI journal entry suggestions based on the description.
+     * In a real application, this would involve calling a powerful AI model.
+     * @param {string} description - The user-provided journal description.
+     */
+    function generateAISuggestions(description) {
+        // Mock AI Logic: Selects accounts based on keywords or provides generic suggestions.
+        const entityCOA = chartOfAccounts.filter(acc => acc.entityId === currentEntityId);
+        let suggestions = [];
+        let confidence = Math.random() * 0.3 + 0.6; // Simulate varying AI confidence
+
+        if (description.toLowerCase().includes("rent")) {
+            const rentAccount = entityCOA.find(acc => acc.name.toLowerCase().includes("rent expense"));
+            const payableAccount = entityCOA.find(acc => acc.name.toLowerCase().includes("accounts payable"));
+            if (rentAccount && payableAccount) {
+                suggestions.push({ id: `sugg_${Date.now()}_1`, accountId: rentAccount.id, accountName: rentAccount.name, taxCode: rentAccount.taxCode, debit: 1000.00, credit: 0.00 });
+                suggestions.push({ id: `sugg_${Date.now()}_2`, accountId: payableAccount.id, accountName: payableAccount.name, taxCode: payableAccount.taxCode, debit: 0.00, credit: 1000.00 });
+            }
+        } else if (description.toLowerCase().includes("sales") || description.toLowerCase().includes("revenue")) {
+            const salesAccount = entityCOA.find(acc => acc.reportingGroup.toLowerCase().includes("revenue"));
+            const cashAccount = entityCOA.find(acc => acc.name.toLowerCase().includes("cash"));
+             if (salesAccount && cashAccount) {
+                suggestions.push({ id: `sugg_${Date.now()}_1`, accountId: cashAccount.id, accountName: cashAccount.name, taxCode: cashAccount.taxCode, debit: 500.00, credit: 0.00 });
+                suggestions.push({ id: `sugg_${Date.now()}_2`, accountId: salesAccount.id, accountName: salesAccount.name, taxCode: salesAccount.taxCode, debit: 0.00, credit: 500.00 });
+            }
+        } else {
+            // Generic suggestion if no specific keywords match
+            if (entityCOA.length >= 2) {
+                suggestions.push({ id: `sugg_${Date.now()}_1`, accountId: entityCOA[0].id, accountName: entityCOA[0].name, taxCode: entityCOA[0].taxCode, debit: 100.00, credit: 0.00 });
+                suggestions.push({ id: `sugg_${Date.now()}_2`, accountId: entityCOA[1].id, accountName: entityCOA[1].name, taxCode: entityCOA[1].taxCode, debit: 0.00, credit: 100.00 });
+            }
+             confidence = Math.random() * 0.2 + 0.4; // Lower confidence for generic suggestions
+        }
+
+        // Store the current journal entry details including AI suggestions
+        currentJournal = {
+            id: `journal_${Date.now()}`,
+            entityId: currentEntityId,
+            status: 'Draft',
+            description: description,
+            lines: suggestions,
+            documents: currentJournal ? currentJournal.documents : [], // Persist documents if any already attached
+            feedbackLogs: [],
+            aiConfidence: confidence
+        };
+        aiConfidenceScoreDiv.textContent = `AI Confidence: ${(currentJournal.aiConfidence * 100).toFixed(0)}%`;
+        renderEntrySuggestions(); // Display the generated suggestions
+        addEntrySpecificAuditLog('AI_SUGGESTION_GENERATED', `Suggestions generated for "${description}"`);
+    }
+
+    /**
+     * Renders the AI-generated journal entry suggestions in the table.
+     */
+    function renderEntrySuggestions() {
+        entrySuggestionsTbody.innerHTML = ''; // Clear existing rows
+        if (!currentJournal || currentJournal.lines.length === 0) {
+            entrySuggestionsTbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-sm text-text-secondary text-center">No suggestions available.</td></tr>`;
+            updateSuggestionBalanceCheck(); // Update balance check message
+            return;
+        }
+
+        currentJournal.lines.forEach(line => {
+            const row = entrySuggestionsTbody.insertRow();
+            row.insertCell().textContent = new Date().toLocaleDateString(); // Mock current date
+
+            // Account selection dropdown
+            const accountCell = row.insertCell();
+            const accountSelect = document.createElement('select');
+            accountSelect.classList.add('input-field', 'text-xs', 'p-1');
+            const entityCOA = chartOfAccounts.filter(acc => acc.entityId === currentEntityId);
+            entityCOA.forEach(acc => {
+                const option = document.createElement('option');
+                option.value = acc.id;
+                option.textContent = `${acc.code} - ${acc.name}`;
+                if (acc.id === line.accountId) option.selected = true; // Select the suggested account
+                accountSelect.appendChild(option);
+            });
+            accountSelect.addEventListener('change', (e) => updateSuggestionLine(line.id, 'accountId', e.target.value));
+            accountCell.appendChild(accountSelect);
+
+            // Tax Code selection dropdown
+            const taxCodeCell = row.insertCell();
+            const taxCodeSelect = document.createElement('select');
+            taxCodeSelect.classList.add('input-field', 'text-xs', 'p-1');
+            taxCodeOptions.forEach(tc => {
+                const option = document.createElement('option');
+                option.value = tc;
+                option.textContent = tc;
+                if (tc === line.taxCode) option.selected = true; // Select the suggested tax code
+                taxCodeSelect.appendChild(option);
+            });
+            taxCodeSelect.addEventListener('change', (e) => updateSuggestionLine(line.id, 'taxCode', e.target.value));
+            taxCodeCell.appendChild(taxCodeSelect);
+
+            // Debit input field
+            const debitCell = row.insertCell();
+            const debitInput = document.createElement('input');
+            debitInput.type = 'number';
+            debitInput.value = line.debit.toFixed(2);
+            debitInput.min = "0";
+            debitInput.step = "0.01";
+            debitInput.classList.add('input-field', 'text-xs', 'p-1', 'w-24');
+            debitInput.addEventListener('change', (e) => updateSuggestionLine(line.id, 'debit', parseFloat(e.target.value)));
+            debitCell.appendChild(debitInput);
+
+            // Credit input field
+            const creditCell = row.insertCell();
+            const creditInput = document.createElement('input');
+            creditInput.type = 'number';
+            creditInput.value = line.credit.toFixed(2);
+            creditInput.min = "0";
+            creditInput.step = "0.01";
+            creditInput.classList.add('input-field', 'text-xs', 'p-1', 'w-24');
+            creditInput.addEventListener('change', (e) => updateSuggestionLine(line.id, 'credit', parseFloat(e.target.value)));
+            creditCell.appendChild(creditInput);
+
+            // Action buttons (Edit and Delete)
+            const actionsCell = row.insertCell();
+            actionsCell.classList.add('space-x-1');
+            actionsCell.innerHTML = `
+                <button data-line-id="${line.id}" class="edit-suggestion-btn p-1 text-blue-500 hover:text-blue-700" title="Edit Line">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 12V7.172l5-5L12.828 5 7.828 10H5zM15 16H5V7h1.172l2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h10a2 2 0 002-2v-3.172l-2 2z" /></svg>
+                </button>
+                <button data-line-id="${line.id}" class="delete-suggestion-btn p-1 text-red-500 hover:text-red-700" title="Delete Line">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                </button>
+            `;
+        });
+        updateSuggestionBalanceCheck(); // Re-check balance after rendering
+    }
+
+    /**
+     * Updates a specific line item in the current journal entry's suggestions.
+     * @param {string} lineId - The ID of the line to update.
+     * @param {string} field - The field to update ('accountId', 'debit', 'credit', 'taxCode').
+     * @param {*} value - The new value for the field.
+     */
+    function updateSuggestionLine(lineId, field, value) {
+        if (!currentJournal) return;
+        const lineIndex = currentJournal.lines.findIndex(l => l.id === lineId);
+        if (lineIndex > -1) {
+            if (field === 'accountId') {
+                const account = chartOfAccounts.find(acc => acc.id === value && acc.entityId === currentEntityId);
+                if (account) {
+                    currentJournal.lines[lineIndex].accountId = account.id;
+                    currentJournal.lines[lineIndex].accountName = account.name;
+                    currentJournal.lines[lineIndex].taxCode = account.taxCode; // Update tax code from COA
+                }
+            } else if (field === 'debit' || field === 'credit') {
+                 currentJournal.lines[lineIndex][field] = parseFloat(value) || 0;
+                 // Ensure only one of debit/credit has a value for a line
+                 if (field === 'debit' && currentJournal.lines[lineIndex][field] > 0) currentJournal.lines[lineIndex].credit = 0;
+                 if (field === 'credit' && currentJournal.lines[lineIndex][field] > 0) currentJournal.lines[lineIndex].debit = 0;
+            } else {
+                currentJournal.lines[lineIndex][field] = value;
+            }
+            addEntrySpecificAuditLog('LINE_MODIFIED', `Line ${lineId} field ${field} changed to ${value}.`);
+            renderEntrySuggestions(); // Re-render to reflect changes, especially tax code from COA
+        }
+    }
+
+    /**
+     * Deletes a suggested line item from the current journal entry.
+     * @param {string} lineId - The ID of the line to delete.
+     */
+    function handleDeleteSuggestionLine(lineId) {
+        if (!currentJournal) return;
+        currentJournal.lines = currentJournal.lines.filter(l => l.id !== lineId);
+        addEntrySpecificAuditLog('LINE_DELETED', `Line ${lineId} deleted.`);
+        renderEntrySuggestions(); // Re-render after deletion
+    }
+
+    /**
+     * Checks if the total debits and credits of the current suggestions are balanced
+     * and updates the display message accordingly.
+     */
+    function updateSuggestionBalanceCheck() {
+        if (!currentJournal || !currentJournal.lines || currentJournal.lines.length === 0) {
+            suggestionBalanceCheckMessage.textContent = '';
+            suggestionBalanceCheckMessage.className = 'mb-4 text-sm text-center p-2 rounded-md'; // Reset class
+            return;
+        }
+        const totalDebit = currentJournal.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+        const totalCredit = currentJournal.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+        const diff = totalDebit - totalCredit;
+
+        // Check for near-zero difference due to floating-point precision
+        if (Math.abs(diff) < 0.001) {
+            suggestionBalanceCheckMessage.textContent = 'Balanced ✔️';
+            suggestionBalanceCheckMessage.className = 'mb-4 text-sm text-center p-2 rounded-md bg-green-100 text-green-700';
+        } else {
+            suggestionBalanceCheckMessage.textContent = `Unbalanced ❌ Difference: ${diff.toFixed(2)}`;
+            suggestionBalanceCheckMessage.className = 'mb-4 text-sm text-center p-2 rounded-md bg-red-100 text-red-700';
+        }
+    }
+
+    /**
+     * Handles files dropped onto the file drop zone.
+     * @param {DragEvent} event - The drag event.
+     */
+    function handleFileDrop(event) {
+        event.preventDefault();
+        fileDropZone.classList.remove('border-sap-blue', 'bg-blue-50'); // Remove drag feedback
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            displayFiles(files);
+            addGeneralAuditLog('FILES_DROPPED', `${files.length} file(s) dropped.`);
+            // In a real app, files would be uploaded to a server here.
+        }
+    }
+
+    /**
+     * Handles files selected via the file input.
+     * @param {Event} event - The change event from the file input.
+     */
+    function handleFileUpload(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            displayFiles(files);
+            addGeneralAuditLog('FILES_SELECTED', `${files.length} file(s) selected for upload.`);
+        }
+    }
+
+    /**
+     * Displays selected/dropped files in the preview container.
+     * @param {FileList} files - The list of files to display.
+     */
+    function displayFiles(files) {
+        filePreviewContainer.innerHTML = ''; // Clear previous previews
+        if (!currentJournal) { // Initialize currentJournal if it doesn't exist
+            currentJournal = { documents: [], lines: [], feedbackLogs: [] };
+        }
+        currentJournal.documents = currentJournal.documents || []; // Ensure documents array exists
+
+        Array.from(files).forEach(file => {
+            const fileDiv = document.createElement('div');
+            fileDiv.classList.add('flex', 'justify-between', 'items-center', 'p-1', 'bg-gray-50', 'rounded', 'text-xs', 'mt-1');
+            fileDiv.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`; // Display file name and size
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '&times;'; // 'x' icon
+            removeBtn.classList.add('text-red-500', 'hover:text-red-700', 'font-bold', 'ml-2');
+            removeBtn.onclick = () => {
+                fileDiv.remove(); // Remove file preview from DOM
+                currentJournal.documents = currentJournal.documents.filter(doc => doc.name !== file.name); // Remove from state
+                showToast(`Removed file: ${file.name}`, 'info');
+            };
+            fileDiv.appendChild(removeBtn);
+            filePreviewContainer.appendChild(fileDiv);
+            currentJournal.documents.push({name: file.name, size: file.size, type: file.type, id: `doc_${Date.now()}_${Math.random().toString(36).substr(2,5)}`}); // Store basic file info
+        });
+        addEntrySpecificAuditLog('FILES_ATTACHED', `${files.length} file(s) attached to current entry.`);
+    }
+
+    /**
+     * Handles the selection of a journal entry template.
+     * Populates the description and generates suggestions based on the template.
+     */
+    function handleTemplateSelection() {
+        const templateId = templateSelect.value;
+        if (!templateId) {
+            // If "Select a template" is chosen, clear suggestions
+            resetCreateJournalForm();
+            return;
+        }
+        const selectedTemplate = templates.find(t => t.id === templateId && t.entityId === currentEntityId);
+        if (selectedTemplate) {
+            journalDescriptionInput.value = selectedTemplate.name; // Populate description with template name
+             aiConfidenceScoreDiv.textContent = 'AI applying template...';
+
+            // Deep copy template lines to avoid modifying the original template object
+            const templateLines = JSON.parse(JSON.stringify(selectedTemplate.lines)).map(line => ({
+                ...line,
+                id: `sugg_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, // Assign a unique ID for each suggestion line
+                // Look up account name from COA based on accountId
+                accountName: chartOfAccounts.find(acc => acc.id === line.accountId && acc.entityId === currentEntityId)?.name || 'Unknown Account'
+            }));
+
+            // Set the current journal with template details
+            currentJournal = {
+                id: `journal_${Date.now()}`,
+                entityId: currentEntityId,
+                status: 'Draft',
+                description: selectedTemplate.name,
+                templateId: templateId,
+                lines: templateLines,
+                documents: currentJournal ? currentJournal.documents : [], // Persist documents if any
+                feedbackLogs: [],
+                aiConfidence: 0.95 // Assume high confidence for templates
+            };
+            aiConfidenceScoreDiv.textContent = `AI Confidence: ${(currentJournal.aiConfidence * 100).toFixed(0)}% (Template Applied)`;
+            renderEntrySuggestions(); // Display the template lines as suggestions
+            addGeneralAuditLog('TEMPLATE_APPLIED', `Template "${selectedTemplate.name}" applied.`);
+            addEntrySpecificAuditLog('TEMPLATE_APPLIED', `Template "${selectedTemplate.name}" applied.`);
+        }
+    }
+
+    /**
+     * Resets the journal entry creation form to its initial state.
+     */
+    function resetCreateJournalForm() {
+        journalDescriptionInput.value = '';
+        templateSelect.value = '';
+        filePreviewContainer.innerHTML = '';
+        aiConfidenceScoreDiv.textContent = '';
+        entrySuggestionsTbody.innerHTML = `<tr><td colspan="6" class="px-4 py-3 text-sm text-text-secondary text-center">Enter a description to see AI suggestions.</td></tr>`;
+        entrySpecificAuditTrailDiv.innerHTML = '<p>No actions taken on this entry yet.</p>';
+        currentJournal = null; // Clear the current journal object
+        updateSuggestionBalanceCheck(); // Reset balance check message
+    }
+
+    /**
+     * Handles the posting of a journal entry. Performs validation checks.
+     */
+    function handlePostEntry() {
+        if (!currentJournal || !currentJournal.lines || currentJournal.lines.length === 0) {
+            showToast('No journal lines to post.', 'warning');
+            return;
+        }
+
+        const totalDebit = currentJournal.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+        const totalCredit = currentJournal.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.001) { // Check for balance within a small tolerance
+            showToast('Journal is unbalanced. Cannot post.', 'error');
+            return;
+        }
+
+        // Simulate posting: Update status and add to main journal entries list
+        currentJournal.status = 'Posted';
+        journalEntries.push({...currentJournal}); // Push a copy of currentJournal
+
+        // Log feedback about the posted entry (assuming user accepted suggestions)
+        const feedback = {
+            id: `fb_${Date.now()}`,
+            entryId: currentJournal.id,
+            userId: 'currentUser', // Placeholder for current user
+            originalSuggestion: "Mocked original AI output", // In a real app, this would store the initial AI suggestions
+            finalEntry: JSON.stringify(currentJournal.lines), // Store the final lines as a string
+            accepted: true // Assuming accepted, could be more granular
+        };
+        currentJournal.feedbackLogs.push(feedback); // Add to current journal's logs
+        feedbackLogs.push(feedback); // Also to a global feedback log (if needed for reporting)
+
+        showToast(`Journal ID ${currentJournal.id} posted successfully!`, 'success');
+        addGeneralAuditLog('JOURNAL_POSTED', `Journal ID ${currentJournal.id} posted.`);
+        addEntrySpecificAuditLog('JOURNAL_POSTED', `Journal entry posted.`);
+        updateFiscalYearSummary(); // Update dashboard summary
+        resetCreateJournalForm(); // Reset form after successful post
+    }
+
+    /**
+     * Adds an entry to the current journal's specific audit trail.
+     * @param {string} action - The action performed (e.g., 'LINE_MODIFIED').
+     * @param {string} details - Detailed description of the action.
+     */
+    function addEntrySpecificAuditLog(action, details) {
+        if (!currentJournal) currentJournal = { feedbackLogs: [] }; // Initialize if not present
+        currentJournal.feedbackLogs = currentJournal.feedbackLogs || []; // Ensure array exists
+        const logEntry = {
+            date: new Date(),
+            user: 'Current User', // Placeholder
+            action: action,
+            details: details
+        };
+        currentJournal.feedbackLogs.unshift(logEntry); // Add to beginning for recent first
+        renderEntrySpecificAuditTrail(); // Re-render the audit trail
+    }
+
+    /**
+     * Renders the audit trail specific to the current journal entry.
+     */
+    function renderEntrySpecificAuditTrail() {
+        entrySpecificAuditTrailDiv.innerHTML = '';
+        if (!currentJournal || !currentJournal.feedbackLogs || currentJournal.feedbackLogs.length === 0) {
+            entrySpecificAuditTrailDiv.innerHTML = '<p>No actions taken on this entry yet.</p>';
+            return;
+        }
+        // Display only the latest 5 log entries
+        currentJournal.feedbackLogs.slice(0, 5).forEach(log => {
+            const p = document.createElement('p');
+            p.innerHTML = `<strong>${log.date.toLocaleTimeString()}</strong> - ${log.user}: ${log.action} - <span class="text-gray-500">${log.details}</span>`;
+            entrySpecificAuditTrailDiv.appendChild(p);
+        });
+    }
+
+    /**
+     * Adds an entry to the general application audit log.
+     * @param {string} action - The action performed.
+     * @param {string} details - Detailed description.
+     */
+    function addGeneralAuditLog(action, details) {
+        const logEntry = {
+            date: new Date(),
+            user: 'Current User', // Placeholder
+            action: action,
+            details: details
+        };
+        generalAuditLog.unshift(logEntry); // Add to beginning for recent first
+        renderGeneralAuditTrail(); // Re-render the general audit trail
+    }
+
+    /**
+     * Renders the general application audit trail.
+     */
+    function renderGeneralAuditTrail() {
+        generalAuditTrailDiv.innerHTML = '';
+        if (generalAuditLog.length === 0) {
+            generalAuditTrailDiv.innerHTML = '<p>No general audit activity yet.</p>';
+            return;
+        }
+        // Display only the latest 10 log entries
+        generalAuditLog.slice(0, 10).forEach(log => {
+            const p = document.createElement('p');
+            p.classList.add('border-b', 'border-gray-200', 'pb-1', 'mb-1');
+            p.innerHTML = `<span class="font-medium">${log.action}</span> (${log.date.toLocaleTimeString()})<br><span class="text-gray-500">${log.details}</span>`;
+            generalAuditTrailDiv.appendChild(p);
+        });
+    }
+
+    /**
+     * Updates the fiscal year summary displayed in the header.
+     */
+    function updateFiscalYearSummary() {
+        const postedEntries = journalEntries.filter(j => j.status === 'Posted' && j.entityId === currentEntityId);
+        let lineItemsCount = 0;
+        postedEntries.forEach(entry => {
+            lineItemsCount += entry.lines.length;
+        });
+        fiscalYearSummaryDiv.textContent = `${postedEntries.length} entries and ${lineItemsCount} line items posted this fiscal year (for current entity).`;
+    }
+
+    /**
+     * Populates the entity type filter dropdown in the trial balance modal.
+     */
+    function populateEntityTypeFilterModal() {
+        entityTypeFilterSelectModal.innerHTML = '<option value="">All Entity Types</option>';
+        // Example entity types; these could come from data or configuration
+        const types = ['Company', 'Trust', 'Individual', 'Partnership'];
+        types.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            entityTypeFilterSelectModal.appendChild(option);
+        });
+    }
+
+    /**
+     * Displays a toast notification message.
+     * @param {string} message - The message to display.
+     * @param {string} [type='info'] - The type of toast ('info', 'success', 'error', 'warning').
+     */
+    function showToast(message, type = 'info') {
+        toastElement.textContent = message;
+        // Remove all type-specific classes before adding the correct one
+        toastElement.classList.remove('opacity-0', 'bg-gray-800', 'bg-green-600', 'bg-red-600', 'bg-yellow-500', 'text-gray-800');
+
+        if (type === 'success') {
+            toastElement.classList.add('bg-green-600');
+        } else if (type === 'error') {
+            toastElement.classList.add('bg-red-600');
+        } else if (type === 'warning') {
+            toastElement.classList.add('bg-yellow-500', 'text-gray-800'); // Warning uses dark text for contrast
+        } else { // 'info' or default
+            toastElement.classList.add('bg-gray-800');
+        }
+        toastElement.classList.remove('opacity-0'); // Make visible
+
+        setTimeout(() => {
+            toastElement.classList.add('opacity-0'); // Hide after 3 seconds
+        }, 3000);
+    }
+
+    /**
+     * Toggles dark mode on or off.
+     */
+    function toggleDarkMode() {
+        document.documentElement.classList.toggle('dark'); // Toggles Tailwind's dark class on HTML element
+        document.body.classList.toggle('dark-mode-manual'); // For any manual CSS dark mode overrides
+
+        // Update button text and store preference in localStorage
+        if (document.documentElement.classList.contains('dark')) {
+            darkModeToggleBtn.textContent = '☀️'; // Sun icon for dark mode
+            localStorage.setItem('darkModeAIJournal', 'enabled');
+        } else {
+            darkModeToggleBtn.textContent = '🌙'; // Moon icon for light mode
+            localStorage.setItem('darkModeAIJournal', 'disabled');
+        }
+    }
+
+    /**
+     * Applies the dark mode setting based on localStorage or system preference.
+     */
+    function applyDarkModeSetting() {
+        if (localStorage.getItem('darkModeAIJournal') === 'enabled' ||
+           (!('darkModeAIJournal' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            darkModeToggleBtn.textContent = '☀️';
+        } else {
+            document.documentElement.classList.remove('dark');
+            darkModeToggleBtn.textContent = '🌙';
+        }
+        // Also apply manual body class based on final dark mode state
+        if (document.documentElement.classList.contains('dark')) {
+            document.body.classList.add('dark-mode-manual');
+        } else {
+            document.body.classList.remove('dark-mode-manual');
+        }
+    }
+
+    // --- New Template Functionality ---
+    /**
+     * Opens the modal for adding a new journal entry template.
+     * Resets form fields and populates the account dropdowns for template lines.
+     */
+    function openNewTemplateModal() {
+        newTemplateModal.classList.remove('hidden');
+        newTemplateModalHeading.textContent = 'Add New Template'; // Set heading for new template
+        newTemplateNameInput.value = '';
+        newTemplateFrequencyInput.value = '';
+        newTemplateLinesContainer.innerHTML = ''; // Clear existing lines
+        addTemplateLineField(); // Add one empty line by default for user input
+        saveNewTemplateBtn.textContent = 'Save Template'; // Reset button text
+        saveNewTemplateBtn.onclick = saveNewTemplate; // Reset click handler
+        addGeneralAuditLog('NEW_TEMPLATE_OPENED', 'New template creation form opened.');
+    }
+
+    /**
+     * Adds a new line input field to the new template form.
+     * Populates the account dropdown for the new line.
+     * @param {Object} [account=null] - Pre-selected account for editing (optional).
+     * @param {number} [debit=0] - Pre-filled debit value (optional).
+     * @param {number} [credit=0] - Pre-filled credit value (optional).
+     */
+    function addTemplateLineField(account = null, debit = 0, credit = 0) {
+        const lineDiv = document.createElement('div');
+        lineDiv.classList.add('flex', 'space-x-2', 'items-end', 'mb-2'); // Added mb-2 for spacing
+        lineDiv.innerHTML = `
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-text-secondary mb-1">Account</label>
+                <select class="input-field new-template-account"></select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text-secondary mb-1">Debit</label>
+                <input type="number" step="0.01" value="${debit.toFixed(2)}" class="input-field w-24 new-template-debit">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text-secondary mb-1">Credit</label>
+                <input type="number" step="0.01" value="${credit.toFixed(2)}" class="input-field w-24 new-template-credit">
+            </div>
+            <button class="btn-secondary remove-template-line-btn px-3 py-2 rounded-md h-min self-end">Remove</button>
+        `;
+
+        const accountSelect = lineDiv.querySelector('.new-template-account');
+        const entityCOA = chartOfAccounts.filter(acc => acc.entityId === currentEntityId);
+        entityCOA.forEach(acc => {
+            const option = document.createElement('option');
+            option.value = acc.id;
+            option.textContent = `${acc.code} - ${acc.name}`;
+            if (account && acc.id === account.id) option.selected = true; // Select if pre-filled
+            accountSelect.appendChild(option);
+        });
+
+        newTemplateLinesContainer.appendChild(lineDiv);
+    }
+
+    /**
+     * Saves a new template from the modal form.
+     * Performs validation (name, balanced lines, at least one line).
+     */
+    function saveNewTemplate() {
+        const templateName = newTemplateNameInput.value.trim();
+        const templateFrequency = newTemplateFrequencyInput.value.trim();
+        if (!templateName) {
+            showToast('Template name is required.', 'error');
+            return;
+        }
+
+        const lines = [];
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        // Iterate through all template lines in the form
+        newTemplateLinesContainer.querySelectorAll('.flex.space-x-2.items-end').forEach(lineDiv => {
+            const accountId = lineDiv.querySelector('.new-template-account').value;
+            const debit = parseFloat(lineDiv.querySelector('.new-template-debit').value) || 0;
+            const credit = parseFloat(lineDiv.querySelector('.new-template-credit').value) || 0;
+
+            if (!accountId || (debit === 0 && credit === 0)) {
+                // If a line is incomplete, we could either error or skip it.
+                // For template creation, it's better to demand complete lines.
+                showToast('All template lines must have an account and a debit or credit value.', 'error');
+                lines.length = 0; // Clear lines to prevent partial save
+                return;
+            }
+            const account = chartOfAccounts.find(acc => acc.id === accountId); // Get account details for tax code
+
+            lines.push({
+                accountId: accountId,
+                debit: debit,
+                credit: credit,
+                taxCode: account ? account.taxCode : 'N/A', // Derive tax code from COA
+                description: '' // Placeholder for future description per line
+            });
+            totalDebit += debit;
+            totalCredit += credit;
+        });
+
+        if (Math.abs(totalDebit - totalCredit) > 0.001) {
+            showToast('Template lines must be balanced (Total Debit must equal Total Credit).', 'error');
+            return;
+        }
+
+        if (lines.length === 0) {
+            showToast('Template must have at least one line.', 'error');
+            return;
+        }
+
+        // Create the new template object
+        const newTemplate = {
+            id: `tpl_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, // Unique ID
+            entityId: currentEntityId,
+            name: templateName,
+            frequency: templateFrequency,
+            lines: lines
+        };
+
+        templates.push(newTemplate); // Add to global templates array
+        populateTemplateSelect(); // Re-populate dropdown with new template
+        showToast('New template saved successfully!', 'success');
+        newTemplateModal.classList.add('hidden'); // Hide the modal
+        addGeneralAuditLog('NEW_TEMPLATE_SAVED', `Template "${templateName}" saved.`);
+        renderTemplatesList(); // Re-render templates list in modal
+    }
+
+    /**
+     * Renders the list of templates in the Templates modal.
+     */
+    function renderTemplatesList() {
+        const templatesListDiv = document.getElementById('templatesList');
+        templatesListDiv.innerHTML = ''; // Clear existing list
+        const entityTemplates = templates.filter(t => t.entityId === currentEntityId);
+
+        if (entityTemplates.length === 0) {
+            templatesListDiv.innerHTML = '<p class="text-sm text-text-secondary text-center py-4">No templates available for this entity.</p>';
+            return;
+        }
+
+        entityTemplates.forEach(template => {
+            const templateDiv = document.createElement('div');
+            templateDiv.classList.add('flex', 'justify-between', 'items-center', 'p-3', 'bg-gray-50', 'rounded-md', 'border', 'border-border-gray', 'mb-2');
+            templateDiv.innerHTML = `
+                <div>
+                    <p class="font-medium text-text-main">${template.name}</p>
+                    <p class="text-xs text-text-secondary">${template.frequency}</p>
+                </div>
+                <div class="space-x-2">
+                    <button data-template-id="${template.id}" class="edit-template-btn p-1 text-blue-500 hover:text-blue-700" title="Edit Template">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 12V7.172l5-5L12.828 5 7.828 10H5zM15 16H5V7h1.172l2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h10a2 2 0 002-2v-3.172l-2 2z" /></svg>
+                    </button>
+                    <button data-template-id="${template.id}" class="delete-template-btn p-1 text-red-500 hover:text-red-700" title="Delete Template">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+            `;
+            templatesListDiv.appendChild(templateDiv);
+
+            // Attach event listeners for edit and delete actions
+            templateDiv.querySelector('.edit-template-btn').addEventListener('click', (e) => editTemplate(e.currentTarget.dataset.templateId));
+            templateDiv.querySelector('.delete-template-btn').addEventListener('click', (e) => deleteTemplate(e.currentTarget.dataset.templateId));
+        });
+    }
+
+    /**
+     * Opens the new template modal to edit an existing template.
+     * Populates the form fields with the template's current data.
+     * @param {string} templateId - The ID of the template to edit.
+     */
+    function editTemplate(templateId) {
+        const templateToEdit = templates.find(t => t.id === templateId);
+        if (!templateToEdit) {
+            showToast('Template not found for editing.', 'error');
+            return;
+        }
+
+        openNewTemplateModal(); // Reuse the new template modal for editing
+        newTemplateModalHeading.textContent = 'Edit Template'; // Change heading to 'Edit'
+        newTemplateNameInput.value = templateToEdit.name;
+        newTemplateFrequencyInput.value = templateToEdit.frequency;
+        newTemplateLinesContainer.innerHTML = ''; // Clear existing lines
+
+        // Populate lines for editing
+        templateToEdit.lines.forEach(line => {
+            addTemplateLineField(
+                chartOfAccounts.find(acc => acc.id === line.accountId), // Pass account object to pre-select
+                line.debit,
+                line.credit
+            );
+        });
+        saveNewTemplateBtn.textContent = 'Update Template'; // Change button text
+        saveNewTemplateBtn.onclick = () => updateTemplate(templateId); // Change click handler to update
+        addGeneralAuditLog('TEMPLATE_EDIT_OPENED', `Edit form opened for template: "${templateToEdit.name}"`);
+    }
+
+    /**
+     * Updates an existing template with new data from the edit form.
+     * Performs validation similar to saving a new template.
+     * @param {string} templateId - The ID of the template to update.
+     */
+    function updateTemplate(templateId) {
+        const templateIndex = templates.findIndex(t => t.id === templateId);
+        if (templateIndex === -1) {
+            showToast('Template not found for updating.', 'error');
+            return;
+        }
+
+        const templateName = newTemplateNameInput.value.trim();
+        const templateFrequency = newTemplateFrequencyInput.value.trim();
+        if (!templateName) {
+            showToast('Template name is required.', 'error');
+            return;
+        }
+
+        const lines = [];
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        newTemplateLinesContainer.querySelectorAll('.flex.space-x-2.items-end').forEach(lineDiv => {
+            const accountId = lineDiv.querySelector('.new-template-account').value;
+            const debit = parseFloat(lineDiv.querySelector('.new-template-debit').value) || 0;
+            const credit = parseFloat(lineDiv.querySelector('.new-template-credit').value) || 0;
+
+            if (!accountId || (debit === 0 && credit === 0)) {
+                 showToast('All template lines must have an account and a debit or credit value.', 'error');
+                lines.length = 0;
+                return;
+            }
+            const account = chartOfAccounts.find(acc => acc.id === accountId);
+
+            lines.push({
+                accountId: accountId,
+                debit: debit,
+                credit: credit,
+                taxCode: account ? account.taxCode : 'N/A',
+                description: ''
+            });
+            totalDebit += debit;
+            totalCredit += credit;
+        });
+
+        if (Math.abs(totalDebit - totalCredit) > 0.001) {
+            showToast('Template lines must be balanced (Total Debit must equal Total Credit).', 'error');
+            return;
+        }
+        if (lines.length === 0) {
+            showToast('Template must have at least one line.', 'error');
+            return;
+        }
+
+        // Update the template in the array
+        templates[templateIndex] = {
+            ...templates[templateIndex], // Keep existing properties
+            name: templateName,
+            frequency: templateFrequency,
+            lines: lines
+        };
+
+        populateTemplateSelect(); // Re-populate dropdown
+        showToast('Template updated successfully!', 'success');
+        newTemplateModal.classList.add('hidden'); // Hide modal
+        addGeneralAuditLog('TEMPLATE_UPDATED', `Template "${templateName}" updated.`);
+        renderTemplatesList(); // Re-render templates list in modal
+
+        // Reset the save button behavior to 'Save Template' for new creations
+        saveNewTemplateBtn.textContent = 'Save Template';
+        saveNewTemplateBtn.onclick = saveNewTemplate;
+    }
+
+    /**
+     * Deletes a template after user confirmation.
+     * @param {string} templateId - The ID of the template to delete.
+     */
+    function deleteTemplate(templateId) {
+        // Use a custom modal for confirmation in a real app, not `confirm()`.
+        if (window.confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+            const templateToDelete = templates.find(t => t.id === templateId);
+            templates = templates.filter(t => t.id !== templateId); // Filter out the deleted template
+            populateTemplateSelect(); // Re-populate dropdown
+            showToast('Template deleted successfully!', 'success');
+            addGeneralAuditLog('TEMPLATE_DELETED', `Template "${templateToDelete?.name}" deleted.`);
+            renderTemplatesList(); // Re-render templates list in modal
+        }
+    }
+
+
+    // --- Chart of Accounts Functionality ---
+    /**
+     * Renders the Chart of Accounts list in the CoA modal.
+     * Displays accounts for the currently selected entity.
+     */
+    function renderChartOfAccounts() {
+        coaListDiv.innerHTML = ''; // Clear existing list
+        const entityCOA = chartOfAccounts.filter(acc => acc.entityId === currentEntityId);
+
+        if (entityCOA.length === 0) {
+            coaListDiv.innerHTML = '<p class="text-sm text-text-secondary text-center py-4">No accounts found for this entity.</p>';
+            return;
+        }
+
+        // Create table structure for CoA display
+        const table = document.createElement('table');
+        table.classList.add('min-w-full', 'divide-y', 'divide-border-gray');
+        table.innerHTML = `
+            <thead class="bg-light-gray">
+                <tr>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Code</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Name</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tax Code</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Reporting Group</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="coaTbody" class="bg-white divide-y divide-border-gray">
+            </tbody>
+        `;
+        coaListDiv.appendChild(table);
+        const coaTbody = document.getElementById('coaTbody');
+
+        // Populate table with accounts
+        entityCOA.forEach(account => {
+            const row = coaTbody.insertRow();
+            row.dataset.accountId = account.id; // Store ID for easy lookup
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm text-text-main">${account.code}</td>
+                <td class="px-4 py-3 text-sm text-text-main">${account.name}</td>
+                <td class="px-4 py-3 text-sm text-text-main">${account.taxCode}</td>
+                <td class="px-4 py-3 text-sm text-text-main">${account.reportingGroup}</td>
+                <td class="px-4 py-3 text-sm space-x-1">
+                    <button data-account-id="${account.id}" class="edit-account-btn p-1 text-blue-500 hover:text-blue-700" title="Edit Account">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828zM5 12V7.172l5-5L12.828 5 7.828 10H5zM15 16H5V7h1.172l2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h10a2 2 0 002-2v-3.172l-2 2z" /></svg>
+                    </button>
+                    <button data-account-id="${account.id}" class="delete-account-btn p-1 text-red-500 hover:text-red-700" title="Delete Account">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                    </button>
+                </td>
+            `;
+            // Attach event listeners for edit and delete buttons on each row
+            row.querySelector('.edit-account-btn').addEventListener('click', (e) => editChartOfAccount(e.currentTarget.dataset.accountId));
+            row.querySelector('.delete-account-btn').addEventListener('click', (e) => deleteChartOfAccount(e.currentTarget.dataset.accountId));
+        });
+        addGeneralAuditLog('COA_VIEWED', 'Chart of Accounts viewed.');
+    }
+
+    /**
+     * Opens a form within the CoA modal to add a new account or edit an existing one.
+     * @param {Object} [accountToEdit=null] - The account object if editing, null if adding new.
+     */
+    function openNewAccountForm(accountToEdit = null) {
+        // Build the form HTML
+        let formHtml = `
+            <div id="accountForm" class="mt-4 p-4 border rounded-md bg-light-gray">
+                <h3 class="text-lg font-semibold mb-3">${accountToEdit ? 'Edit Account' : 'Add New Account'}</h3>
+                <div class="mb-3">
+                    <label for="accountCode" class="block text-sm font-medium text-gray-700">Account Code:</label>
+                    <input type="text" id="accountCode" class="input-field mt-1" value="${accountToEdit ? accountToEdit.code : ''}" placeholder="e.g., 1000" ${accountToEdit ? 'disabled' : ''}>
+                </div>
+                <div class="mb-3">
+                    <label for="accountName" class="block text-sm font-medium text-gray-700">Account Name:</label>
+                    <input type="text" id="accountName" class="input-field mt-1" value="${accountToEdit ? accountToEdit.name : ''}" placeholder="e.g., Cash at Bank">
+                </div>
+                <div class="mb-3">
+                    <label for="accountTaxCode" class="block text-sm font-medium text-gray-700">Tax Code:</label>
+                    <select id="accountTaxCode" class="input-field mt-1">
+                        ${taxCodeOptions.map(opt => `<option value="${opt}" ${accountToEdit && accountToEdit.taxCode === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="accountReportingGroup" class="block text-sm font-medium text-gray-700">Reporting Group:</label>
+                    <select id="accountReportingGroup" class="input-field mt-1">
+                        ${reportingGroupOptions.map(opt => `<option value="${opt}" ${accountToEdit && accountToEdit.reportingGroup === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                </div>
+                <button id="saveAccountBtn" class="btn-primary w-full">${accountToEdit ? 'Update Account' : 'Save Account'}</button>
+                ${accountToEdit ? '<button id="cancelEditAccountBtn" class="btn-secondary w-full mt-2">Cancel</button>' : ''}
+            </div>
+        `;
+        // Temporarily replace the CoA list with the form
+        coaListDiv.innerHTML = formHtml;
+
+        // Attach event listener to the save/update button
+        document.getElementById('saveAccountBtn').addEventListener('click', () => {
+            if (accountToEdit) {
+                updateChartOfAccount(accountToEdit.id); // Call update if editing
+            } else {
+                addChartOfAccount(); // Call add if creating new
+            }
+        });
+        // Attach event listener for cancel button if editing
+        if (accountToEdit) {
+            document.getElementById('cancelEditAccountBtn').addEventListener('click', renderChartOfAccounts); // Go back to list view
+        }
+        addGeneralAuditLog('COA_FORM_OPENED', `Account ${accountToEdit ? 'edit' : 'add'} form opened.`);
+    }
+
+    /**
+     * Adds a new account to the Chart of Accounts.
+     * Performs validation for required fields and uniqueness of account code.
+     */
+    function addChartOfAccount() {
+        const code = document.getElementById('accountCode').value.trim();
+        const name = document.getElementById('accountName').value.trim();
+        const taxCode = document.getElementById('accountTaxCode').value;
+        const reportingGroup = document.getElementById('accountReportingGroup').value;
+
+        if (!code || !name) {
+            showToast('Account code and name are required.', 'error');
+            return;
+        }
+        // Check for duplicate account code within the current entity
+        if (chartOfAccounts.some(acc => acc.code === code && acc.entityId === currentEntityId)) {
+            showToast('Account code already exists for this entity.', 'error');
+            return;
+        }
+
+        // Create new account object
+        const newAccount = {
+            id: `coa_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, // Unique ID
+            entityId: currentEntityId,
+            code: code,
+            name: name,
+            taxCode: taxCode,
+            reportCode: reportingGroup.substring(0, 3).toUpperCase(), // Simplified report code from group
+            reportingGroup: reportingGroup
+        };
+
+        chartOfAccounts.push(newAccount); // Add to global CoA array
+        showToast('Account added successfully!', 'success');
+        addGeneralAuditLog('COA_ACCOUNT_ADDED', `New account "${name}" (${code}) added.`);
+        renderChartOfAccounts(); // Re-render the CoA list
+    }
+
+    /**
+     * Initiates the editing process for a specific Chart of Account entry.
+     * @param {string} accountId - The ID of the account to edit.
+     */
+    function editChartOfAccount(accountId) {
+        const accountToEdit = chartOfAccounts.find(acc => acc.id === accountId);
+        if (accountToEdit) {
+            openNewAccountForm(accountToEdit); // Open the form pre-filled with account data
+        } else {
+            showToast('Account not found.', 'error');
+        }
+    }
+
+    /**
+     * Updates an existing account in the Chart of Accounts with data from the edit form.
+     * @param {string} accountId - The ID of the account to update.
+     */
+    function updateChartOfAccount(accountId) {
+        const accountIndex = chartOfAccounts.findIndex(acc => acc.id === accountId);
+        if (accountIndex === -1) {
+            showToast('Account not found for updating.', 'error');
+            return;
+        }
+
+        const name = document.getElementById('accountName').value.trim();
+        const taxCode = document.getElementById('accountTaxCode').value;
+        const reportingGroup = document.getElementById('accountReportingGroup').value;
+
+        if (!name) {
+            showToast('Account name is required.', 'error');
+            return;
+        }
+
+        // Update the account object in the array
+        chartOfAccounts[accountIndex] = {
+            ...chartOfAccounts[accountIndex], // Keep existing properties (like ID, code, entityId)
+            name: name,
+            taxCode: taxCode,
+            reportingGroup: reportingGroup,
+            reportCode: reportingGroup.substring(0, 3).toUpperCase() // Update report code
+        };
+        showToast('Account updated successfully!', 'success');
+        addGeneralAuditLog('COA_ACCOUNT_UPDATED', `Account "${name}" updated.`);
+        renderChartOfAccounts(); // Re-render the CoA list
+    }
+
+    /**
+     * Deletes an account from the Chart of Accounts after user confirmation.
+     * @param {string} accountId - The ID of the account to delete.
+     */
+    function deleteChartOfAccount(accountId) {
+        // Use a custom modal for confirmation in a real app, not `confirm()`.
+        if (window.confirm('Are you sure you want to delete this account? This cannot be undone.')) {
+            const accountToDelete = chartOfAccounts.find(acc => acc.id === accountId);
+            chartOfAccounts = chartOfAccounts.filter(acc => acc.id !== accountId); // Filter out the deleted account
+            showToast('Account deleted successfully!', 'success');
+            addGeneralAuditLog('COA_ACCOUNT_DELETED', `Account "${accountToDelete?.name}" (${accountToDelete?.code}) deleted.`);
+            renderChartOfAccounts(); // Re-render the CoA list
+        }
+    }
+
+    // --- Export to Xero CSV Functionality ---
+    /**
+     * Exports the suggested journal lines to a CSV file formatted for Xero import.
+     */
+    function exportToXeroCSV() {
+        if (!currentJournal || !currentJournal.lines || currentJournal.lines.length === 0) {
+            showToast('No journal lines to export.', 'warning');
+            return;
+        }
+
+        // Define CSV headers compatible with Xero Journal Import
+        const headers = [
+            "JournalId", "Date", "Description", "AccountCode", "AccountName", "TaxCode", "Debit", "Credit"
+        ];
+
+        let csvContent = headers.join(',') + '\n'; // Add headers to CSV content
+
+        // Iterate through each journal line and format for CSV
+        currentJournal.lines.forEach(line => {
+            const account = chartOfAccounts.find(acc => acc.id === line.accountId);
+            const accountCode = account ? account.code : '';
+            const accountName = account ? account.name : 'Unknown Account';
+            const description = currentJournal.description || 'Journal Entry';
+            // Format date as YYYY-MM-DD which is a common and safe format for imports
+            const date = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+
+            // Construct the row, ensuring to escape double quotes within fields
+            const row = [
+                `"${currentJournal.id}"`, // Include Journal ID for internal tracking (Xero might ignore)
+                `"${date}"`,
+                `"${description.replace(/"/g, '""')}"`, // Escape double quotes for CSV
+                `"${accountCode}"`,
+                `"${accountName.replace(/"/g, '""')}"`, // Escape double quotes
+                `"${line.taxCode}"`,
+                line.debit.toFixed(2), // Format numbers to 2 decimal places
+                line.credit.toFixed(2)
+            ].join(','); // Join fields with a comma
+            csvContent += row + '\n'; // Add row to CSV content
+        });
+
+        // Create a Blob containing the CSV data
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a'); // Create a temporary anchor element
+
+        // Check if browser supports download attribute
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob); // Create a URL for the Blob
+            link.setAttribute('href', url);
+            link.setAttribute('download', `journal_export_${currentJournal.id || Date.now()}.csv`); // Set filename
+            link.style.visibility = 'hidden'; // Hide the link
+            document.body.appendChild(link); // Append to body to make it clickable
+            link.click(); // Programmatically click the link to trigger download
+            document.body.removeChild(link); // Clean up the link
+            showToast('Journal lines exported successfully to CSV!', 'success');
+            addGeneralAuditLog('EXPORT_CSV', `Journal ID ${currentJournal.id} exported to Xero CSV.`);
+        } else {
+            showToast('Your browser does not support downloading files directly. Please copy the content manually.', 'error');
+        }
+    }
+</script>
+</body>
+</html>
+
